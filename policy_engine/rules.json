@@ -43,5 +43,12 @@
       "source_network": "admin-vpn",
       "time_range": ["22:00", "06:00"]
     }
+  },
+  { "rule_id": "test-file-smoke-test",
+   "resource": "test*.txt",
+    "allow_if": { "role": "tester",
+     "source_network": "dev-network",
+      "time_range": ["00:00", "23:59"] 
+    } 
   }
 ]
