@@ -1,0 +1,10 @@
+﻿.env
+__pycache__/
+*.pyc
+.venv/
+url.txt
+downloaded_test1.txt
+storage/diagnose.py
+storage/check_creds.py
+
+*.csv
