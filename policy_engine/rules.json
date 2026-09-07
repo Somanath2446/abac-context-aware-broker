@@ -1,0 +1,47 @@
+[
+  {
+    "rule_id": "radiologist-daytime-scans",
+    "resource": "scan_images/*",
+    "allow_if": {
+      "role": "radiologist",
+      "source_network": "hospital-vpn",
+      "time_range": ["09:00", "18:00"]
+    }
+  },
+  {
+    "rule_id": "radiologist-oncall-scans",
+    "resource": "scan_images/*",
+    "allow_if": {
+      "role": "radiologist-oncall",
+      "source_network": "hospital-vpn",
+      "time_range": ["18:00", "09:00"]
+    }
+  },
+  {
+    "rule_id": "nurse-patient-records",
+    "resource": "patient_records/*",
+    "allow_if": {
+      "role": "nurse",
+      "source_network": "hospital-vpn",
+      "time_range": ["07:00", "19:00"]
+    }
+  },
+  {
+    "rule_id": "auditor-audit-logs",
+    "resource": "audit_logs/*",
+    "allow_if": {
+      "role": "auditor",
+      "source_network": "admin-office",
+      "time_range": ["00:00", "23:59"]
+    }
+  },
+  {
+    "rule_id": "itadmin-overnight-maintenance",
+    "resource": "system_configs/*",
+    "allow_if": {
+      "role": "it-admin",
+      "source_network": "admin-vpn",
+      "time_range": ["22:00", "06:00"]
+    }
+  }
+]
