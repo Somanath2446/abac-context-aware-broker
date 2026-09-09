@@ -6,5 +6,6 @@ url.txt
 downloaded_test1.txt
 storage/diagnose.py
 storage/check_creds.py
+broker/revocation_store.json
 
 *.csv
