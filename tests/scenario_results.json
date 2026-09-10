@@ -1,0 +1,92 @@
+[
+  {
+    "id": "A1",
+    "name": "leaked-token-wrong-network",
+    "category": "attack",
+    "expected_outcome": "deny",
+    "actual_outcome": "deny",
+    "actual_reason": "denied by rule 'radiologist-daytime-scans': source_network 'public-wifi' does not match required network 'hospital-vpn'",
+    "passed": true
+  },
+  {
+    "id": "A2",
+    "name": "correct-credentials-outside-hours",
+    "category": "attack",
+    "expected_outcome": "deny",
+    "actual_outcome": "deny",
+    "actual_reason": "denied by rule 'radiologist-daytime-scans': time 23:00 is outside allowed range 09:00-18:00",
+    "passed": true
+  },
+  {
+    "id": "A3",
+    "name": "correct-network-wrong-role",
+    "category": "attack",
+    "expected_outcome": "deny",
+    "actual_outcome": "deny",
+    "actual_reason": "denied by rule 'radiologist-daytime-scans': role 'nurse' does not match required role 'radiologist'",
+    "passed": true
+  },
+  {
+    "id": "A4",
+    "name": "revoked-token-reused",
+    "category": "attack",
+    "expected_outcome": "deny",
+    "actual_outcome": "deny",
+    "actual_reason": "token '3ed3efb7-97f9-413e-8dbd-0a7f148e555e' has been revoked",
+    "passed": true
+  },
+  {
+    "id": "A5",
+    "name": "resource-with-no-matching-rule",
+    "category": "attack",
+    "expected_outcome": "deny",
+    "actual_outcome": "deny",
+    "actual_reason": "denied: no rule matches resource 'finance_reports/q3_earnings.xlsx'",
+    "passed": true
+  },
+  {
+    "id": "F1",
+    "name": "radiologist-15-minutes-late",
+    "category": "false-positive-edge-case",
+    "expected_outcome": "deny (by current strict rules) \u2014 but flagged as a legitimate real-world case",
+    "actual_outcome": "deny",
+    "actual_reason": "denied by rule 'radiologist-daytime-scans': time 18:15 is outside allowed range 09:00-18:00",
+    "passed": true
+  },
+  {
+    "id": "F2",
+    "name": "first-time-unrecognized-device",
+    "category": "false-positive-edge-case",
+    "expected_outcome": "allow",
+    "actual_outcome": "allow",
+    "actual_reason": "allowed by rule 'nurse-patient-records': all conditions satisfied",
+    "passed": true
+  },
+  {
+    "id": "F3",
+    "name": "oncall-radiologist-near-shift-end",
+    "category": "false-positive-edge-case",
+    "expected_outcome": "allow",
+    "actual_outcome": "allow",
+    "actual_reason": "allowed by rule 'radiologist-oncall-scans': all conditions satisfied",
+    "passed": true
+  },
+  {
+    "id": "F4",
+    "name": "auditor-late-night-incident-review",
+    "category": "false-positive-edge-case",
+    "expected_outcome": "allow",
+    "actual_outcome": "allow",
+    "actual_reason": "allowed by rule 'auditor-audit-logs': all conditions satisfied",
+    "passed": true
+  },
+  {
+    "id": "F5",
+    "name": "itadmin-patch-window-near-end",
+    "category": "false-positive-edge-case",
+    "expected_outcome": "allow",
+    "actual_outcome": "allow",
+    "actual_reason": "allowed by rule 'itadmin-overnight-maintenance': all conditions satisfied",
+    "passed": true
+  }
+]

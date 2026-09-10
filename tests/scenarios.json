@@ -1,0 +1,189 @@
+[
+  {
+    "id": "A1",
+    "category": "attack",
+    "name": "leaked-token-wrong-network",
+    "description": "A radiologist's credentials are used, but from outside the hospital VPN (e.g. a leaked/stolen token used from a home network or public wifi).",
+    "request": {
+      "object_id": "scan_images/mri_patient1.png",
+      "requester_id": "dr_iyer",
+      "role": "radiologist",
+      "source_network": "public-wifi",
+      "device_id": "unknown-laptop-1",
+      "timestamp": "2026-06-01T14:00:00+00:00"
+    },
+    "expected_outcome": "deny",
+    "reasoning": "Attack case. Correct role but wrong network is exactly the signature of a stolen token being replayed from an unauthorized location. Must be denied regardless of role correctness."
+  },
+  {
+    "id": "A2",
+    "category": "attack",
+    "name": "correct-credentials-outside-hours",
+    "description": "Correct role and network, but the request lands outside the role's allowed time window and the requester does not hold the on-call role that would cover that window.",
+    "request": {
+      "object_id": "scan_images/mri_patient1.png",
+      "requester_id": "dr_iyer",
+      "role": "radiologist",
+      "source_network": "hospital-vpn",
+      "device_id": "laptop-42",
+      "timestamp": "2026-06-01T23:00:00+00:00"
+    },
+    "expected_outcome": "deny",
+    "reasoning": "Attack case. Simulates a token being replayed hours after a legitimate day-shift session ended. Correct identity and network alone must not be sufficient without correct role-for-the-hour."
+  },
+  {
+    "id": "A3",
+    "category": "attack",
+    "name": "correct-network-wrong-role",
+    "description": "Correct network and a plausible time, but the role does not match what the resource requires (e.g. a nurse account attempting to pull radiology scans).",
+    "request": {
+      "object_id": "scan_images/mri_patient1.png",
+      "requester_id": "nurse_priya",
+      "role": "nurse",
+      "source_network": "hospital-vpn",
+      "device_id": "laptop-9",
+      "timestamp": "2026-06-01T14:00:00+00:00"
+    },
+    "expected_outcome": "deny",
+    "reasoning": "Attack case. Tests privilege escalation / lateral access \u2014 a legitimately-networked, legitimately-authenticated account trying to reach a resource outside its role's scope."
+  },
+  {
+    "id": "A4",
+    "category": "attack",
+    "name": "revoked-token-reused",
+    "description": "A token that was previously granted (policy said allow) is explicitly revoked by an owner/admin, then the same token_id is presented again with otherwise-valid attributes.",
+    "expected_outcome": "deny",
+    "steps": [
+      {
+        "step": 1,
+        "action": "POST /request-access",
+        "request": {
+          "object_id": "test1.txt",
+          "requester_id": "user123",
+          "role": "tester",
+          "source_network": "dev-network",
+          "device_id": "laptop-42",
+          "timestamp": "2026-06-01T10:00:00+00:00"
+        },
+        "expected_outcome": "allow",
+        "note": "Capture the token_id returned here for step 3."
+      },
+      {
+        "step": 2,
+        "action": "POST /revoke/{token_id}",
+        "expected_outcome": "revoked: true"
+      },
+      {
+        "step": 3,
+        "action": "POST /request-access (same attributes, same token_id from step 1)",
+        "request": {
+          "object_id": "test1.txt",
+          "requester_id": "user123",
+          "role": "tester",
+          "source_network": "dev-network",
+          "device_id": "laptop-42",
+          "timestamp": "2026-06-01T10:05:00+00:00"
+        },
+        "expected_outcome": "deny",
+        "note": "Policy engine alone would still say allow \u2014 the revocation layer is what must catch this."
+      }
+    ],
+    "reasoning": "Attack case, and the reason this scenario matters for the report: it is the one case your policy engine (evaluate.py) cannot catch by design, since role/network/time are all still valid. It specifically tests the revocation layer that sits on top of policy evaluation."
+  },
+  {
+    "id": "A5",
+    "category": "attack",
+    "name": "resource-with-no-matching-rule",
+    "description": "A request for an object outside any resource pattern currently defined in rules.json, from an otherwise privileged-looking identity.",
+    "request": {
+      "object_id": "finance_reports/q3_earnings.xlsx",
+      "requester_id": "user_x",
+      "role": "it-admin",
+      "source_network": "admin-vpn",
+      "device_id": "laptop-1",
+      "timestamp": "2026-06-01T14:00:00+00:00"
+    },
+    "expected_outcome": "deny",
+    "reasoning": "Attack case (fail-closed check). No rule exists for finance_reports/*, so this must deny by default rather than accidentally allow because some unrelated rule loosely matched. Confirms the engine fails closed, not open, for unknown resources."
+  },
+  {
+    "id": "F1",
+    "category": "false-positive-edge-case",
+    "name": "radiologist-15-minutes-late",
+    "description": "A day-shift radiologist, correct role and network, still finishing a chart 15 minutes after the 18:00 cutoff.",
+    "request": {
+      "object_id": "scan_images/mri_patient2.png",
+      "requester_id": "dr_iyer",
+      "role": "radiologist",
+      "source_network": "hospital-vpn",
+      "device_id": "laptop-42",
+      "timestamp": "2026-06-01T18:15:00+00:00"
+    },
+    "expected_outcome": "deny (by current strict rules) \u2014 but flagged as a legitimate real-world case",
+    "reasoning": "This is a deliberately tricky case, not a straightforward allow. In the real world this is very likely a legitimate radiologist wrapping up work, not an attacker \u2014 there's no network or role anomaly, just a few minutes' overrun. The current rule set is strict and will deny it. Worth reporting as a known limitation/false-positive-rate data point: rigid time_range boundaries reject legitimate near-boundary behavior. A grace-period rule extension is a natural discussed improvement."
+  },
+  {
+    "id": "F2",
+    "category": "false-positive-edge-case",
+    "name": "first-time-unrecognized-device",
+    "description": "Correct role, correct network, correct time \u2014 but the device_id has never been seen before (new phone/laptop, not malicious, just unrecognized).",
+    "request": {
+      "object_id": "patient_records/chart_44.pdf",
+      "requester_id": "nurse_priya",
+      "role": "nurse",
+      "source_network": "hospital-vpn",
+      "device_id": "new-tablet-first-seen-2026-06-01",
+      "timestamp": "2026-06-01T10:00:00+00:00"
+    },
+    "expected_outcome": "allow",
+    "reasoning": "Legitimate case: a new device alone (e.g. a replacement work tablet) is not evidence of compromise when every other attribute checks out. Current rules.json intentionally does not gate on device_id at all, so this correctly allows \u2014 confirming the system doesn't unnecessarily block legitimate new-device use. Worth noting in the report as a conscious design choice (device_id is captured for audit purposes but not yet used as a decision factor)."
+  },
+  {
+    "id": "F3",
+    "category": "false-positive-edge-case",
+    "name": "oncall-radiologist-near-shift-end",
+    "description": "An on-call radiologist finishing up just before the overnight window ends and the day shift begins.",
+    "request": {
+      "object_id": "scan_images/mri_patient3.png",
+      "requester_id": "dr_singh",
+      "role": "radiologist-oncall",
+      "source_network": "hospital-vpn",
+      "device_id": "laptop-7",
+      "timestamp": "2026-06-01T08:45:00+00:00"
+    },
+    "expected_outcome": "allow",
+    "reasoning": "Legitimate case, and a precise boundary test: 08:45 falls just inside the overnight wraparound window (18:00-09:00). Confirms the overnight time-range logic correctly includes near-end-of-range timestamps rather than off-by-one-ing at the wrap point."
+  },
+  {
+    "id": "F4",
+    "category": "false-positive-edge-case",
+    "name": "auditor-late-night-incident-review",
+    "description": "An auditor pulling logs late at night after being paged for a suspected incident.",
+    "request": {
+      "object_id": "audit_logs/2026-06-01.log",
+      "requester_id": "auditor_r",
+      "role": "auditor",
+      "source_network": "admin-office",
+      "device_id": "laptop-3",
+      "timestamp": "2026-06-01T23:50:00+00:00"
+    },
+    "expected_outcome": "allow",
+    "reasoning": "Legitimate case: auditors are deliberately given a full 24-hour window in rules.json because incident response isn't confined to business hours. Confirms that design intent actually holds at the far edge of the day (23:50)."
+  },
+  {
+    "id": "F5",
+    "category": "false-positive-edge-case",
+    "name": "itadmin-patch-window-near-end",
+    "description": "An IT admin finishing a scheduled overnight patch cycle close to the end of the maintenance window.",
+    "request": {
+      "object_id": "system_configs/network.conf",
+      "requester_id": "admin_k",
+      "role": "it-admin",
+      "source_network": "admin-vpn",
+      "device_id": "admin-laptop-2",
+      "timestamp": "2026-06-01T05:50:00+00:00"
+    },
+    "expected_outcome": "allow",
+    "reasoning": "Legitimate case and another overnight-wraparound boundary test, on the other side of midnight from F3. Confirms 05:50 correctly falls inside 22:00-06:00 rather than being treated as \"daytime\" and denied."
+  }
+]

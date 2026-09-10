@@ -85,12 +85,17 @@ def evaluate(attributes: dict, rules: list) -> Tuple[bool, str]:
         - Multiple rules can apply to the same resource (e.g. a day-shift
           rule and an on-call rule for the same resource) — this is how you
           express OR conditions. The first fully-satisfied rule wins.
-        - If a resource-matching rule exists but its conditions aren't met,
-          we keep the most specific denial reason found so far, but keep
-          checking other rules in case one of them allows.
+        - If no rule allows, the denial reason reported is from whichever
+          resource-matching rule came *closest* to allowing (fewest failed
+          conditions), not simply the last rule checked. This matters for
+          audit quality: a request with the right role but wrong network
+          should say "wrong network", not get overwritten by an unrelated
+          rule's "wrong role" message just because that rule happened to be
+          checked later.
     """
     resource = attributes.get("object_id", "")
     best_denial_reason = None
+    best_failure_count = None
 
     for rule in rules:
         if not fnmatch.fnmatch(resource, rule["resource"]):
@@ -132,7 +137,13 @@ def evaluate(attributes: dict, rules: list) -> Tuple[bool, str]:
         if not failures:
             return True, f"allowed by rule '{rule_id}': all conditions satisfied"
 
-        best_denial_reason = f"denied by rule '{rule_id}': " + "; ".join(failures)
+        # Keep the reason from whichever matching rule is "closest" to
+        # allowing (fewest failed conditions) — that's the most useful
+        # single explanation for an audit log, not just whichever rule
+        # happened to be checked last.
+        if best_failure_count is None or len(failures) < best_failure_count:
+            best_failure_count = len(failures)
+            best_denial_reason = f"denied by rule '{rule_id}': " + "; ".join(failures)
 
     if best_denial_reason is not None:
         return False, best_denial_reason
