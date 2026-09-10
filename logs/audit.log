@@ -1,0 +1,6 @@
+{"timestamp": "2026-09-10T11:36:37.321843+00:00", "requester_id": "string", "object_id": "string", "decision": "deny", "reason": "denied: no rule matches resource 'string'"}
+{"timestamp": "2026-09-10T11:36:42.042805+00:00", "requester_id": "string", "object_id": "string", "decision": "deny", "reason": "denied: no rule matches resource 'string'"}
+{"timestamp": "2026-09-10T11:36:52.051652+00:00", "requester_id": "string", "object_id": "string", "decision": "deny", "reason": "denied: no rule matches resource 'string'"}
+{"timestamp": "2026-09-10T11:36:52.715350+00:00", "requester_id": "string", "object_id": "string", "decision": "deny", "reason": "denied: no rule matches resource 'string'"}
+{"timestamp": "2026-09-10T11:36:53.376613+00:00", "requester_id": "string", "object_id": "string", "decision": "deny", "reason": "denied: no rule matches resource 'string'"}
+{"timestamp": "2026-09-10T11:36:54.073626+00:00", "requester_id": "string", "object_id": "string", "decision": "deny", "reason": "denied: no rule matches resource 'string'"}

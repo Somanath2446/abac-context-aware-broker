@@ -17,6 +17,9 @@ expires). If an owner revokes that token_id via POST /revoke/{token_id},
 any future request presenting it is denied — even if the policy engine
 would otherwise say allow. This is a fallback layer that sits on top of
 (not instead of) attribute-based policy evaluation.
+Day 8-9: every request - allowed or denied, by policy OR revocation - gets
+appended to logs/audit.log as one JSON line (timestamp, requester_id,
+object_id, decision, reason). Plain append for now.
 
 For this demo, source_network and device_id are NOT auto-detected from the
 real request (that would need reverse-proxy / client cert setup out of
@@ -56,6 +59,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from broker import revocation_store
+from broker.audit_log import log_event
 from policy_engine.evaluate import evaluate
 from storage.s3_client import generate_presigned_url
 
@@ -106,6 +110,7 @@ def request_access(req: AccessRequest):
     allowed, reason = evaluate(attributes, RULES)
 
     if not allowed:
+        log_event(req.requester_id, req.object_id, "deny", reason)
         return JSONResponse(
             status_code=403,
             content={"attributes": attributes, "allowed": False, "reason": reason},
@@ -113,12 +118,14 @@ def request_access(req: AccessRequest):
 
     # Revocation check happens AFTER policy allows, as a fallback layer on top.
     if req.token_id is not None and revocation_store.is_revoked(req.token_id):
+        revoke_reason = f"token '{req.token_id}' has been revoked"
+        log_event(req.requester_id, req.object_id, "deny", revoke_reason)
         return JSONResponse(
             status_code=403,
             content={
                 "attributes": attributes,
                 "allowed": False,
-                "reason": f"token '{req.token_id}' has been revoked",
+                "reason": revoke_reason,
             },
         )
 
@@ -128,6 +135,7 @@ def request_access(req: AccessRequest):
         revocation_store.register_token(token_id, req.object_id, req.requester_id)
 
     url = generate_presigned_url(req.object_id, expiry_seconds=60)
+    log_event(req.requester_id, req.object_id, "allow", reason)
 
     return {
         "attributes": attributes,
